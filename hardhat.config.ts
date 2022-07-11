@@ -109,12 +109,7 @@ const config: HardhatUserConfig = {
   },
   contractSizer: {
     runOnCompile: false,
-    only: [
-      "APIConsumer",
-      "KeepersCounter",
-      "PriceConsumerV3",
-      "RandomNumberConsumer",
-    ],
+    only: ["TicketCrud"],
   },
   namedAccounts: {
     deployer: {
@@ -128,7 +123,7 @@ const config: HardhatUserConfig = {
   solidity: {
     compilers: [
       {
-        version: "0.8.7",
+        version: "0.8.8",
       },
       {
         version: "0.6.6",
