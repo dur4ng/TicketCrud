@@ -2,12 +2,16 @@
 pragma solidity 0.8.8;
 
 //import "./Interfaces/ITicketCrud.sol";
+import "hardhat/console.sol";
 
 contract TicketCrud {
   error TicketCrud__OnlyOwner();
-  error TicketCrud__NotEnoughETHForTicket();
+  error TicketCrud__NotEnouthValueForCreateTicket();
+  error TicketCrud__UserAlreadyHasTicket();
+  error TicketCrud__UserDoesntHaveTicket();
 
   struct Ticket {
+    uint256 id;
     string name;
     string eventName;
   }
@@ -16,14 +20,26 @@ contract TicketCrud {
     if (msg.sender != i_owner) revert TicketCrud__OnlyOwner();
     _;
   }
-  modifier notEnoughValue() {
-    if (msg.value < TICKET_PRICE) revert TicketCrud__NotEnoughETHForTicket();
+  modifier enoughValue() {
+    if (msg.value < TICKET_PRICE)
+      revert TicketCrud__NotEnouthValueForCreateTicket();
+    _;
+  }
+  modifier noTicketPossession() {
+    if (s_tickets[msg.sender].id != 0)
+      revert TicketCrud__UserAlreadyHasTicket();
+    _;
+  }
+  modifier ticketPossession() {
+    if (s_tickets[msg.sender].id == 0)
+      revert TicketCrud__UserDoesntHaveTicket();
     _;
   }
 
   uint256 constant TICKET_PRICE = 5000;
   address private immutable i_owner;
 
+  uint256 autonumericCount = 0;
   mapping(address => Ticket) s_tickets;
 
   constructor() {
@@ -34,34 +50,52 @@ contract TicketCrud {
     return i_owner;
   }
 
-  function createTicket(string calldata name, string calldata eventName)
+  function showMyTicket()
     external
-    payable
-    notEnoughValue
-  {}
-
-  function deleteTicket() external {}
-
-  function updateTicket(string calldata name, string calldata eventName)
-    external
-  {}
-
-  function showMyTicket() external returns (Ticket memory) {
-    Ticket memory tmpTicket = Ticket({name: "tmp", eventName: "tmpEvent"});
-    return tmpTicket;
-  }
-
-  function showTicket(Ticket memory _ticketName)
-    external
+    view
+    ticketPossession
     returns (Ticket memory)
   {
-    Ticket memory tmpTicket = Ticket({name: "tmp", eventName: "tmpEvent"});
-    return tmpTicket;
+    return s_tickets[msg.sender];
   }
 
-  function hasTicket() external returns (bool) {
-    return true;
+  function showTicket(address _address) external view returns (Ticket memory) {
+    return s_tickets[_address];
   }
 
-  function withdraw() external onlyOwner {}
+  function createTicket(string calldata _name, string calldata _eventName)
+    external
+    payable
+    enoughValue
+    noTicketPossession
+  {
+    autonumericCount = autonumericCount + 1;
+    Ticket memory newTicket = Ticket({
+      id: autonumericCount,
+      name: _name,
+      eventName: _eventName
+    });
+    s_tickets[msg.sender] = newTicket;
+  }
+
+  function deleteTicket() external ticketPossession {
+    Ticket memory resetedTicket = Ticket(0, "", "");
+    s_tickets[msg.sender] = resetedTicket;
+  }
+
+  function updateTicket(string calldata _name, string calldata _eventName)
+    external
+    ticketPossession
+  {
+    uint256 ticketId = s_tickets[msg.sender].id;
+    Ticket memory updatedTicket = Ticket(ticketId, _name, _eventName);
+    s_tickets[msg.sender] = updatedTicket;
+  }
+
+  function withdraw() external onlyOwner {
+    (bool callSuccess, ) = payable(msg.sender).call{
+      value: address(this).balance
+    }("");
+    require(callSuccess, "Call failed");
+  }
 }
